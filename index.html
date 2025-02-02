@@ -697,20 +697,20 @@
               placeholder="Enter Vietnamese meaning"
             />
           </div>
-          <div class="image-upload">
-            <label for="wordImage" class="image-upload-label">
-              <i class="fas fa-image"></i>
-              <span>Add Image</span>
-              <input
-                type="file"
-                id="wordImage"
-                accept="image/*"
-                capture="environment"
-                style="display: none"
-              />
-            </label>
-            <div id="imagePreview" class="image-preview"></div>
-          </div>
+         <!-- Xóa thuộc tính capture="environment" -->
+<div class="image-upload">
+  <label for="wordImage" class="image-upload-label">
+    <i class="fas fa-image"></i>
+    <span>Add Image</span>
+    <input
+      type="file"
+      id="wordImage"
+      accept="image/*"
+      style="display: none"
+    />
+  </label>
+  <div id="imagePreview" class="image-preview"></div>
+</div>
           <div class="action-buttons">
             <button onclick="vocabularyManager.addWord()">
               <i class="fas fa-plus"></i> Add Word
