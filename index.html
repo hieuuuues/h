@@ -697,20 +697,20 @@
               placeholder="Enter Vietnamese meaning"
             />
           </div>
-         <!-- Xóa thuộc tính capture="environment" -->
-<div class="image-upload">
-  <label for="wordImage" class="image-upload-label">
-    <i class="fas fa-image"></i>
-    <span>Add Image</span>
-    <input
-      type="file"
-      id="wordImage"
-      accept="image/*"
-      style="display: none"
-    />
-  </label>
-  <div id="imagePreview" class="image-preview"></div>
-</div>
+          <div class="image-upload">
+            <label for="wordImage" class="image-upload-label">
+              <i class="fas fa-image"></i>
+              <span>Add Image</span>
+              <input
+                type="file"
+                id="wordImage"
+                accept="image/*"
+                capture="environment"
+                style="display: none"
+              />
+            </label>
+            <div id="imagePreview" class="image-preview"></div>
+          </div>
           <div class="action-buttons">
             <button onclick="vocabularyManager.addWord()">
               <i class="fas fa-plus"></i> Add Word
@@ -873,8 +873,6 @@
           });
         }
 
-        // Thêm phương thức mới ngay sau constructor
-
         loadSettings() {
           return (
             JSON.parse(localStorage.getItem("settings")) || {
@@ -984,16 +982,12 @@
             let newLevel = word.level;
 
             if (timeElapsed >= 240000) {
-              // 4 minutes
               newLevel = 0;
             } else if (timeElapsed >= 180000) {
-              // 3 minutes
               newLevel = 25;
             } else if (timeElapsed >= 120000) {
-              // 2 minutes
               newLevel = 50;
             } else if (timeElapsed >= 60000) {
-              // 1 minute
               newLevel = 75;
             }
 
@@ -1038,143 +1032,115 @@
             "reviewAccuracy"
           ).textContent = `${accuracy}%`;
         }
-      handleImageUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+        handleImageUpload(event) {
+          const file = event.target.files[0];
+          if (!file) return;
 
-    // Kiểm tra kích thước file (giới hạn 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        alert('File size should be less than 5MB');
-        return;
-    }
+          // Kiểm tra kích thước file (giới hạn 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+            this.showNotification("File size should be less than 5MB", "error");
+            return;
+          }
 
-    // Kiểm tra loại file
-    if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
-        return;
-    }
+          // Kiểm tra loại file
+          if (!file.type.startsWith("image/")) {
+            this.showNotification("Please select an image file", "error");
+            return;
+          }
 
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-        try {
-            // Tạo image object để kiểm tra và resize nếu cần
-            const img = new Image();
-            
-            img.onload = () => {
+          const reader = new FileReader();
+
+          reader.onload = (e) => {
+            try {
+              // Tạo image object để kiểm tra và resize
+              const img = new Image();
+
+              img.onload = () => {
                 // Kích thước tối đa cho ảnh
                 const maxWidth = 800;
                 const maxHeight = 800;
-                
+
                 let width = img.width;
                 let height = img.height;
 
                 // Tính toán kích thước mới nếu ảnh quá lớn
                 if (width > maxWidth || height > maxHeight) {
-                    if (width > height) {
-                        height *= maxWidth / width;
-                        width = maxWidth;
-                    } else {
-                        width *= maxHeight / height;
-                        height = maxHeight;
-                    }
+                  if (width > height) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                  } else {
+                    width *= maxHeight / height;
+                    height = maxHeight;
+                  }
                 }
 
-                // Tạo canvas để resize ảnh
-                const canvas = document.createElement('canvas');
+                // Tạo canvas để resize
+                const canvas = document.createElement("canvas");
                 canvas.width = width;
                 canvas.height = height;
-                
-                const ctx = canvas.getContext('2d');
+
+                const ctx = canvas.getContext("2d");
                 ctx.drawImage(img, 0, 0, width, height);
 
                 // Chuyển canvas thành base64 với chất lượng 0.8
                 const resizedImage = canvas.toDataURL(file.type, 0.8);
 
                 // Hiển thị preview
-                const imagePreview = document.getElementById('imagePreview');
+                const imagePreview = document.getElementById("imagePreview");
                 imagePreview.innerHTML = `<img src="${resizedImage}" alt="Preview">`;
 
-                // Lưu ảnh vào từ vựng hiện tại
+                // Lưu ảnh
                 if (this.vocabulary.length > 0 && this.currentCardIndex >= 0) {
-                    this.vocabulary[this.currentCardIndex].image = resizedImage;
-                    this.saveVocabulary();
-                    alert('Image added successfully!');
+                  // Nếu đang xem flashcard, cập nhật ảnh cho từ hiện tại
+                  const words = this.vocabulary.filter(
+                    (word) => word.level === this.currentLevel
+                  );
+                  if (words.length > 0) {
+                    const currentWord = words[this.currentCardIndex];
+                    const wordIndex = this.vocabulary.findIndex(
+                      (w) => w.id === currentWord.id
+                    );
+                    if (wordIndex !== -1) {
+                      this.vocabulary[wordIndex].image = resizedImage;
+                      this.saveVocabulary();
+                      this.updateFlashcard();
+                      this.showNotification("Image added successfully!");
+                    }
+                  }
                 } else {
-                    alert('No vocabulary card selected');
+                  // Nếu đang thêm từ mới
+                  this.currentImage = resizedImage;
                 }
-            };
+              };
 
-            img.src = e.target.result;
-            
-        } catch (error) {
-            console.error('Error processing image:', error);
-            alert('Error processing image. Please try again.');
-        }
-    };
-
-    reader.onerror = (error) => {
-        console.error('Error reading file:', error);
-        alert('Error reading file. Please try again.');
-    };
-
-    // Đọc file
-    reader.readAsDataURL(file);
-    
-    // Reset input để có thể chọn lại cùng một file
-    event.target.value = '';
-}
-
-// Thêm phương thức setupTouchEvents
-setupTouchEvents() {
-    const flashcard = document.querySelector('.flashcard');
-    if (flashcard) {
-        let touchStartY = 0;
-        let touchEndY = 0;
-
-        flashcard.addEventListener('touchstart', (e) => {
-            touchStartY = e.touches[0].clientY;
-        }, { passive: true });
-
-        flashcard.addEventListener('touchend', (e) => {
-            touchEndY = e.changedTouches[0].clientY;
-            const swipeDistance = touchEndY - touchStartY;
-
-            // Nếu swipe đủ xa, flip card
-            if (Math.abs(swipeDistance) > 30) {
-                this.handleCardFlip();
+              img.src = e.target.result;
+            } catch (error) {
+              console.error("Error processing image:", error);
+              this.showNotification("Error processing image", "error");
             }
-        }, { passive: true });
-    }
+          };
 
-    // Touch events cho settings button
-    const settingsBtn = document.querySelector('.settings-btn');
-    if (settingsBtn) {
-        settingsBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.openSettings();
-        });
-    }
+          reader.onerror = (error) => {
+            console.error("Error reading file:", error);
+            this.showNotification("Error reading file", "error");
+          };
 
-    // Touch events cho close settings
-    const closeBtn = document.querySelector('.settings-close');
-    if (closeBtn) {
-        closeBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.closeSettings();
-        });
-    }
-}
+          // Đọc file
+          reader.readAsDataURL(file);
+
+          // Reset input để có thể chọn lại cùng một file
+          event.target.value = "";
+        }
 
         updateImagePreview() {
           const preview = document.getElementById("imagePreview");
           if (this.currentImage) {
             preview.innerHTML = `
-      <img src="${this.currentImage}" alt="Word image">
-      <button class="remove-image" onclick="vocabularyManager.removeImage()">
-        <i class="fas fa-times"></i>
-      </button>
-    `;
+          <img src="${this.currentImage}" alt="Word image">
+          <button class="remove-image" onclick="vocabularyManager.removeImage()">
+            <i class="fas fa-times"></i>
+          </button>
+        `;
           } else {
             preview.innerHTML = "";
           }
@@ -1204,13 +1170,13 @@ setupTouchEvents() {
             lastReviewed: null,
             reviewCount: 0,
             mistakes: 0,
-            image: this.currentImage, // Thêm ảnh vào từ vựng
+            image: this.currentImage,
           };
 
           this.vocabulary.push(newWord);
           this.saveVocabulary();
           this.clearInputs(englishInput, vietnameseInput);
-          this.removeImage(); // Xóa ảnh sau khi thêm từ
+          this.removeImage();
           this.showNotification(`Added: ${english}`);
 
           if (this.settings.autoPlay) {
@@ -1218,29 +1184,34 @@ setupTouchEvents() {
           }
         }
 
-        updateFlashcard() {
-          const words = this.vocabulary.filter(
-            (word) => word.level === this.currentLevel
-          );
-          if (words.length > 0) {
-            const currentWord = words[this.currentCardIndex];
-            const cardWord = document.querySelector(".card-word");
-            const cardMeaning = document.querySelector(".card-meaning");
-            const cardImage = document.querySelector(".card-image");
-
-            cardWord.textContent = currentWord.english;
-            cardMeaning.textContent = currentWord.vietnamese;
-
-            // Update image if exists
-            if (currentWord.image) {
-              cardImage.innerHTML = `<img src="${currentWord.image}" alt="${currentWord.english}">`;
-            } else {
-              cardImage.innerHTML = "";
+        createWordHTML(word) {
+          return `
+        <div class="word-item" data-id="${word.id}">
+          <div class="word-content">
+            ${
+              word.image
+                ? `<div class="word-image"><img src="${word.image}" alt="${word.english}"></div>`
+                : ""
             }
-
-            document.querySelector(".flashcard").classList.remove("flipped");
-          }
+            <div class="word-text">${word.english}</div>
+            <div class="word-translation">${word.vietnamese}</div>
+          </div>
+          <div class="word-actions">
+            <button class="audio-btn action-btn" onclick="event.stopPropagation(); vocabularyManager.playAudio('${
+              word.english
+            }')">
+              <i class="fas fa-volume-up"></i>
+            </button>
+            <button class="delete-btn action-btn" onclick="event.stopPropagation(); vocabularyManager.deleteWord('${
+              word.id
+            }')">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      `;
         }
+
         deleteWord(id) {
           try {
             const wordIndex = this.vocabulary.findIndex((w) => w.id === id);
@@ -1270,34 +1241,6 @@ setupTouchEvents() {
           });
         }
 
-        createWordHTML(word) {
-          return `
-    <div class="word-item" data-id="${word.id}">
-      <div class="word-content">
-        ${
-          word.image
-            ? `<div class="word-image"><img src="${word.image}" alt="${word.english}"></div>`
-            : ""
-        }
-        <div class="word-text">${word.english}</div>
-        <div class="word-translation">${word.vietnamese}</div>
-      </div>
-      <div class="word-actions">
-        <button class="audio-btn action-btn" onclick="event.stopPropagation(); vocabularyManager.playAudio('${
-          word.english
-        }')">
-          <i class="fas fa-volume-up"></i>
-        </button>
-        <button class="delete-btn action-btn" onclick="event.stopPropagation(); vocabularyManager.deleteWord('${
-          word.id
-        }')">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-    </div>
-  `;
-        }
-
         showFlashcards(level) {
           const words = this.vocabulary.filter((word) => word.level === level);
           if (words.length === 0) {
@@ -1321,51 +1264,28 @@ setupTouchEvents() {
             const cardMeaning = document.querySelector(".card-meaning");
             const cardImage = document.querySelector(
               ".card-face.front .card-image"
-            ); // Sửa selector để đúng với cấu trúc HTML
+            );
 
-            // Cập nhật từ và nghĩa
             cardWord.textContent = currentWord.english;
             cardMeaning.textContent = currentWord.vietnamese;
 
-            // Cập nhật ảnh nếu có
             if (currentWord.image) {
               cardImage.innerHTML = `<img src="${currentWord.image}" alt="${currentWord.english}" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
             } else {
-              cardImage.innerHTML = ""; // Xóa ảnh nếu từ không có ảnh
+              cardImage.innerHTML = "";
             }
 
-            // Reset card về mặt trước
             const flashcard = document.querySelector(".flashcard");
             flashcard.classList.remove("flipped");
           }
         }
 
         flipCard(event) {
-          // Prevent flip if clicking audio button
           if (event && event.target.closest(".audio-btn")) {
             return;
           }
           const flashcard = document.querySelector(".flashcard");
           flashcard.classList.toggle("flipped");
-        }
-
-        showFlashcards(level) {
-          const words = this.vocabulary.filter((word) => word.level === level);
-          if (words.length === 0) {
-            this.showNotification("No words at this level", "error");
-            return;
-          }
-
-          this.currentLevel = level;
-          this.currentCardIndex = 0;
-          this.updateFlashcard();
-
-          const modal = document.getElementById("flashcardModal");
-          modal.style.display = "flex";
-
-          // Add click event listener to flashcard
-          const flashcard = document.querySelector(".flashcard");
-          flashcard.onclick = (e) => this.flipCard(e);
         }
 
         nextCard() {
@@ -1386,12 +1306,114 @@ setupTouchEvents() {
         }
 
         closeFlashcards() {
-          const modal = document.getElementById("flashcardModal");
-          modal.style.display = "none";
+          document.getElementById("flashcardModal").style.display = "none";
+        }
 
-          // Remove click event listener
+        setupEventListeners() {
+          document
+            .getElementById("englishWord")
+            .addEventListener("keypress", (e) => {
+              if (e.key === "Enter") {
+                document.getElementById("vietnameseMeaning").focus();
+              }
+            });
+
+          document
+            .getElementById("vietnameseMeaning")
+            .addEventListener("keypress", (e) => {
+              if (e.key === "Enter") {
+                this.addWord();
+              }
+            });
+
+          document.addEventListener("keydown", (e) => {
+            if (
+              document.getElementById("flashcardModal").style.display === "flex"
+            ) {
+              switch (e.key) {
+                case "ArrowRight":
+                  this.nextCard();
+                  break;
+                case "ArrowLeft":
+                  this.previousCard();
+                  break;
+                case " ":
+                  this.flipCard();
+                  e.preventDefault();
+                  break;
+                case "Escape":
+                  this.closeFlashcards();
+                  break;
+              }
+            }
+          });
+
+          const imageInput = document.getElementById("wordImage");
+          if (imageInput) {
+            imageInput.addEventListener("change", (e) =>
+              this.handleImageUpload(e)
+            );
+          }
+
+          this.setupTouchEvents();
+
+          if (this.settings.darkMode) {
+            document.body.classList.add("dark-mode");
+          }
+        }
+
+        setupTouchEvents() {
           const flashcard = document.querySelector(".flashcard");
-          flashcard.onclick = null;
+          if (flashcard) {
+            let touchStartX = 0;
+            let touchStartY = 0;
+
+            flashcard.addEventListener(
+              "touchstart",
+              (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+              },
+              { passive: true }
+            );
+
+            flashcard.addEventListener(
+              "touchend",
+              (e) => {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+
+                if (Math.abs(deltaX) > 50 && Math.abs(deltaY) < 30) {
+                  if (deltaX > 0) {
+                    this.previousCard();
+                  } else {
+                    this.nextCard();
+                  }
+                } else if (Math.abs(deltaY) > 50 && Math.abs(deltaX) < 30) {
+                  this.flipCard();
+                }
+              },
+              { passive: true }
+            );
+          }
+
+          const settingsBtn = document.querySelector(".settings-btn");
+          if (settingsBtn) {
+            settingsBtn.addEventListener("touchstart", (e) => {
+              e.preventDefault();
+              this.openSettings();
+            });
+          }
+
+          const closeBtn = document.querySelector(".settings-close");
+          if (closeBtn) {
+            closeBtn.addEventListener("touchstart", (e) => {
+              e.preventDefault();
+              this.closeSettings();
+            });
+          }
         }
 
         playAudio(word) {
@@ -1471,7 +1493,6 @@ setupTouchEvents() {
 
           input.click();
         }
-
         openSettings() {
           document.getElementById("settingsModal").style.display = "flex";
           document.getElementById("darkModeToggle").checked =
@@ -1504,80 +1525,6 @@ setupTouchEvents() {
             this.showNotification("Progress reset successfully");
           }
         }
-
-       setupEventListeners() {
-    // Click event cho nút Next
-    document.getElementById('nextButton').addEventListener('click', () => {
-      this.nextCard();
-    });
-
-    // Click event cho nút Previous
-    document.getElementById('prevButton').addEventListener('click', () => {
-      this.previousCard();
-    });
-
-    // Sự kiện cho phím mũi tên
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight') {
-        this.nextCard();
-      } else if (e.key === 'ArrowLeft') {
-        this.previousCard();
-      }
-    });
-
-    // Event cho nút Settings
-    document.querySelector('.settings-btn').addEventListener('click', () => {
-      this.openSettings();
-    });
-
-    // Event cho nút Close Settings
-    document.querySelector('.settings-close').addEventListener('click', () => {
-      this.closeSettings();
-    });
-
-    // Event cho Dark Mode toggle
-    document.getElementById('darkModeToggle').addEventListener('change', (e) => {
-      this.settings.darkMode = e.target.checked;
-      this.saveSettings();
-      this.applyDarkMode();
-    });
-
-    // Event cho Auto Play toggle
-    document.getElementById('autoPlayToggle').addEventListener('change', (e) => {
-      this.settings.autoPlay = e.target.checked;
-      this.saveSettings();
-    });
-
-    // Event cho nút Reset Progress
-    document.getElementById('resetProgress').addEventListener('click', () => {
-      if (confirm('Are you sure you want to reset all progress?')) {
-        this.resetProgress();
-      }
-    });
-
-    // Event cho flashcard flip
-    document.querySelector('.flashcard').addEventListener('click', () => {
-      this.handleCardFlip();
-    });
-
-    // Event cho audio button
-    document.querySelectorAll('.audio-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const word = document.querySelector('.card-word').textContent;
-        this.playAudio(word);
-      });
-    });
-
-    // Event cho image upload
-    const imageInput = document.getElementById('wordImage');
-    if (imageInput) {
-      imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
-    }
-
-    // Event listener cho touch events trên mobile
-    this.setupTouchEvents();
-}
 
         sanitizeInput(input) {
           return input.trim().replace(/[<>]/g, "").replace(/\s+/g, " ");
