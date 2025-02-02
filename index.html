@@ -1038,83 +1038,133 @@
             "reviewAccuracy"
           ).textContent = `${accuracy}%`;
         }
-        handleImageUpload(event) {
-          const file = event.target.files[0];
-          if (!file) return;
+      handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-          // Kiểm tra kích thước file (giới hạn 5MB)
-          if (file.size > 5 * 1024 * 1024) {
-            this.showNotification("File size should be less than 5MB", "error");
-            return;
-          }
+    // Kiểm tra kích thước file (giới hạn 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('File size should be less than 5MB');
+        return;
+    }
 
-          // Kiểm tra loại file
-          if (!file.type.startsWith("image/")) {
-            this.showNotification("Please select an image file", "error");
-            return;
-          }
+    // Kiểm tra loại file
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
 
-          const reader = new FileReader();
-
-          reader.onload = (e) => {
-            try {
-              // Tạo image object để kiểm tra kích thước
-              const img = new Image();
-              img.onload = () => {
-                // Resize ảnh nếu cần
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        try {
+            // Tạo image object để kiểm tra và resize nếu cần
+            const img = new Image();
+            
+            img.onload = () => {
+                // Kích thước tối đa cho ảnh
                 const maxWidth = 800;
                 const maxHeight = 800;
-
+                
                 let width = img.width;
                 let height = img.height;
 
+                // Tính toán kích thước mới nếu ảnh quá lớn
                 if (width > maxWidth || height > maxHeight) {
-                  if (width > height) {
-                    height *= maxWidth / width;
-                    width = maxWidth;
-                  } else {
-                    width *= maxHeight / height;
-                    height = maxHeight;
-                  }
+                    if (width > height) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    } else {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
                 }
 
-                // Tạo canvas để resize
-                const canvas = document.createElement("canvas");
+                // Tạo canvas để resize ảnh
+                const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
-
-                const ctx = canvas.getContext("2d");
+                
+                const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Chuyển canvas thành base64
+                // Chuyển canvas thành base64 với chất lượng 0.8
                 const resizedImage = canvas.toDataURL(file.type, 0.8);
 
                 // Hiển thị preview
-                const imagePreview = document.getElementById("imagePreview");
+                const imagePreview = document.getElementById('imagePreview');
                 imagePreview.innerHTML = `<img src="${resizedImage}" alt="Preview">`;
 
-                // Lưu ảnh đã resize
-                this.currentImage = resizedImage;
-              };
+                // Lưu ảnh vào từ vựng hiện tại
+                if (this.vocabulary.length > 0 && this.currentCardIndex >= 0) {
+                    this.vocabulary[this.currentCardIndex].image = resizedImage;
+                    this.saveVocabulary();
+                    alert('Image added successfully!');
+                } else {
+                    alert('No vocabulary card selected');
+                }
+            };
 
-              img.src = e.target.result;
-            } catch (error) {
-              console.error("Error processing image:", error);
-              this.showNotification("Error processing image", "error");
-            }
-          };
-
-          reader.onerror = (error) => {
-            console.error("Error reading file:", error);
-            this.showNotification("Error reading file", "error");
-          };
-
-          // Đọc file
-          reader.readAsDataURL(file);
-
-          // Reset input để có thể chọn lại cùng một file
-          event.target.value = "";
+            img.src = e.target.result;
+            
+        } catch (error) {
+            console.error('Error processing image:', error);
+            alert('Error processing image. Please try again.');
         }
+    };
+
+    reader.onerror = (error) => {
+        console.error('Error reading file:', error);
+        alert('Error reading file. Please try again.');
+    };
+
+    // Đọc file
+    reader.readAsDataURL(file);
+    
+    // Reset input để có thể chọn lại cùng một file
+    event.target.value = '';
+}
+
+// Thêm phương thức setupTouchEvents
+setupTouchEvents() {
+    const flashcard = document.querySelector('.flashcard');
+    if (flashcard) {
+        let touchStartY = 0;
+        let touchEndY = 0;
+
+        flashcard.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        flashcard.addEventListener('touchend', (e) => {
+            touchEndY = e.changedTouches[0].clientY;
+            const swipeDistance = touchEndY - touchStartY;
+
+            // Nếu swipe đủ xa, flip card
+            if (Math.abs(swipeDistance) > 30) {
+                this.handleCardFlip();
+            }
+        }, { passive: true });
+    }
+
+    // Touch events cho settings button
+    const settingsBtn = document.querySelector('.settings-btn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.openSettings();
+        });
+    }
+
+    // Touch events cho close settings
+    const closeBtn = document.querySelector('.settings-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.closeSettings();
+        });
+    }
+}
 
         updateImagePreview() {
           const preview = document.getElementById("imagePreview");
@@ -1455,50 +1505,79 @@
           }
         }
 
-        setupEventListeners() {
-          document
-            .getElementById("englishWord")
-            .addEventListener("keypress", (e) => {
-              if (e.key === "Enter") {
-                document.getElementById("vietnameseMeaning").focus();
-              }
-            });
+       setupEventListeners() {
+    // Click event cho nút Next
+    document.getElementById('nextButton').addEventListener('click', () => {
+      this.nextCard();
+    });
 
-          document
-            .getElementById("vietnameseMeaning")
-            .addEventListener("keypress", (e) => {
-              if (e.key === "Enter") {
-                this.addWord();
-              }
-            });
+    // Click event cho nút Previous
+    document.getElementById('prevButton').addEventListener('click', () => {
+      this.previousCard();
+    });
 
-          document.addEventListener("keydown", (e) => {
-            if (
-              document.getElementById("flashcardModal").style.display === "flex"
-            ) {
-              switch (e.key) {
-                case "ArrowRight":
-                  this.nextCard();
-                  break;
-                case "ArrowLeft":
-                  this.previousCard();
-                  break;
-                case " ":
-                  this.flipCard();
-                  e.preventDefault();
-                  break;
-                case "Escape":
-                  this.closeFlashcards();
-                  break;
-              }
-            }
-          });
+    // Sự kiện cho phím mũi tên
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') {
+        this.nextCard();
+      } else if (e.key === 'ArrowLeft') {
+        this.previousCard();
+      }
+    });
 
-          // Apply saved settings
-          if (this.settings.darkMode) {
-            document.body.classList.add("dark-mode");
-          }
-        }
+    // Event cho nút Settings
+    document.querySelector('.settings-btn').addEventListener('click', () => {
+      this.openSettings();
+    });
+
+    // Event cho nút Close Settings
+    document.querySelector('.settings-close').addEventListener('click', () => {
+      this.closeSettings();
+    });
+
+    // Event cho Dark Mode toggle
+    document.getElementById('darkModeToggle').addEventListener('change', (e) => {
+      this.settings.darkMode = e.target.checked;
+      this.saveSettings();
+      this.applyDarkMode();
+    });
+
+    // Event cho Auto Play toggle
+    document.getElementById('autoPlayToggle').addEventListener('change', (e) => {
+      this.settings.autoPlay = e.target.checked;
+      this.saveSettings();
+    });
+
+    // Event cho nút Reset Progress
+    document.getElementById('resetProgress').addEventListener('click', () => {
+      if (confirm('Are you sure you want to reset all progress?')) {
+        this.resetProgress();
+      }
+    });
+
+    // Event cho flashcard flip
+    document.querySelector('.flashcard').addEventListener('click', () => {
+      this.handleCardFlip();
+    });
+
+    // Event cho audio button
+    document.querySelectorAll('.audio-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const word = document.querySelector('.card-word').textContent;
+        this.playAudio(word);
+      });
+    });
+
+    // Event cho image upload
+    const imageInput = document.getElementById('wordImage');
+    if (imageInput) {
+      imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
+    }
+
+    // Event listener cho touch events trên mobile
+    this.setupTouchEvents();
+}
 
         sanitizeInput(input) {
           return input.trim().replace(/[<>]/g, "").replace(/\s+/g, " ");
